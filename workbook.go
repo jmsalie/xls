@@ -9,7 +9,7 @@ import (
 	"unicode/utf16"
 )
 
-//xls workbook type
+// xls workbook type
 type WorkBook struct {
 	Is5ver   bool
 	Type     uint16
@@ -17,7 +17,7 @@ type WorkBook struct {
 	Xfs      []st_xf_data
 	Fonts    []Font
 	Formats  map[uint16]*Format
-	//All the sheets from the workbook
+	// All the sheets from the workbook
 	sheets         []*WorkSheet
 	Author         string
 	rs             io.ReadSeeker
@@ -28,7 +28,7 @@ type WorkBook struct {
 	dateMode       uint16
 }
 
-//read workbook from ole2 file
+// read workbook from ole2 file
 func newWorkBookFromOle2(rs io.ReadSeeker) *WorkBook {
 	wb := new(WorkBook)
 	wb.Formats = make(map[uint16]*Format)
@@ -104,8 +104,10 @@ func (wb *WorkBook) parseBof(buf io.ReadSeeker, b *bof, pre *bof, offset_pre int
 					break
 				}
 
-				offset_pre++
 				err = binary.Read(buf_item, binary.LittleEndian, &size)
+				if err != io.EOF {
+					offset_pre++
+				}
 			}
 		}
 		offset = offset_pre
@@ -152,12 +154,12 @@ func (wb *WorkBook) parseBof(buf io.ReadSeeker, b *bof, pre *bof, offset_pre int
 		f := new(FontInfo)
 		binary.Read(buf_item, binary.LittleEndian, f)
 		wb.addFont(f, buf_item)
-	case 0x41E: //FORMAT
+	case 0x41E: // FORMAT
 		font := new(Format)
 		binary.Read(buf_item, binary.LittleEndian, &font.Head)
 		font.str, _ = wb.get_string(buf_item, font.Head.Size)
 		wb.addFormat(font)
-	case 0x22: //DATEMODE
+	case 0x22: // DATEMODE
 		binary.Read(buf_item, binary.LittleEndian, &wb.dateMode)
 	}
 	return
@@ -172,7 +174,7 @@ func (w *WorkBook) get_string(buf io.ReadSeeker, size uint16) (res string, err e
 		var bts = make([]byte, size)
 		_, err = buf.Read(bts)
 		res = decodeWindows1251(bts)
-		//res = string(bts)
+		// res = string(bts)
 	} else {
 		var richtext_num = uint16(0)
 		var phonetic_size = uint32(0)
@@ -258,13 +260,13 @@ func (w *WorkBook) addSheet(sheet *boundsheet, buf io.ReadSeeker) {
 	w.sheets = append(w.sheets, &WorkSheet{bs: sheet, Name: name, wb: w, Visibility: TWorkSheetVisibility(sheet.Visible)})
 }
 
-//reading a sheet from the compress file to memory, you should call this before you try to get anything from sheet
+// reading a sheet from the compress file to memory, you should call this before you try to get anything from sheet
 func (w *WorkBook) prepareSheet(sheet *WorkSheet) {
 	w.rs.Seek(int64(sheet.bs.Filepos), 0)
 	sheet.parse(w.rs)
 }
 
-//Get one sheet by its number
+// Get one sheet by its number
 func (w *WorkBook) GetSheet(num int) *WorkSheet {
 	if num < len(w.sheets) {
 		s := w.sheets[num]
@@ -277,14 +279,14 @@ func (w *WorkBook) GetSheet(num int) *WorkSheet {
 	}
 }
 
-//Get the number of all sheets, look into example
+// Get the number of all sheets, look into example
 func (w *WorkBook) NumSheets() int {
 	return len(w.sheets)
 }
 
-//helper function to read all cells from file
-//Notice: the max value is the limit of the max capacity of lines.
-//Warning: the helper function will need big memeory if file is large.
+// helper function to read all cells from file
+// Notice: the max value is the limit of the max capacity of lines.
+// Warning: the helper function will need big memeory if file is large.
 func (w *WorkBook) ReadAllCells(max int) (res [][]string) {
 	res = make([][]string, 0)
 	for _, sheet := range w.sheets {
